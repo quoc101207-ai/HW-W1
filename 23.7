@@ -1,0 +1,65 @@
+import osmnx as ox
+import networkx as nx
+import folium
+import time
+
+# 1. Khởi tạo tọa độ khu vực nghiên cứu
+start_coords = (10.758, 106.666)
+end_coords = (10.781, 106.692)
+
+# 2. Tải mạng lưới đường bộ (Lấy bán kính đủ rộng bao phủ cả 2 điểm)
+G = ox.graph_from_point((10.770, 106.679), dist=2500, network_type='drive')
+
+# 3. Tìm các nút gần nhất trên mạng lưới
+# Sử dụng ox.nearest_nodes để xác định điểm bắt đầu và kết thúc trên đồ thị
+orig_node = ox.nearest_nodes(G, start_coords[1], start_coords[0])
+dest_node = ox.nearest_nodes(G, end_coords[1], end_coords[0])
+
+# 4. THUẬT TOÁN 1: Dijkstra
+# Tìm đường ngắn nhất dựa trên trọng số chiều dài (length)
+start_d = time.time()
+route_dijkstra = nx.shortest_path(G, orig_node, dest_node, weight='length', method='dijkstra')
+time_dijkstra = time.time() - start_d
+
+# 5. THUẬT TOÁN 2: A* (A-star)
+# Sử dụng thêm hàm Heuristic (khoảng cách Euclid) để tối ưu tốc độ tìm kiếm
+def heuristic(u, v):
+    node_u = G.nodes[u]
+    node_v = G.nodes[v]
+    return ox.distance.euclidean(node_u['y'], node_u['x'], node_v['y'], node_v['x'])
+
+start_a = time.time()
+route_astar = nx.astar_path(G, orig_node, dest_node, weight='length', heuristic=heuristic)
+time_astar = time.time() - start_a
+
+# 6. XỬ LÝ ĐƯỜNG NỐI: Trích xuất Geometry từ các cạnh (Edges)
+# Thay vì nối các điểm bằng đường thẳng, ta lấy tọa độ thực tế của con đường
+route_geometry = []
+for u, v in zip(route_astar[:-1], route_astar[1:]):
+    # Lấy dữ liệu cạnh, ưu tiên thuộc tính 'geometry' để bám sát mặt đường
+    edge_data = G.get_edge_data(u, v)[0]
+    if 'geometry' in edge_data:
+        coords = list(edge_data['geometry'].coords)
+        route_geometry.extend([(c[1], c[0]) for c in coords])
+    else:
+        # Nếu đoạn đường là đường thẳng tuyệt đối (không có geometry), dùng tọa độ nút
+        route_geometry.append((G.nodes[u]['y'], G.nodes[u]['x']))
+        route_geometry.append((G.nodes[v]['y'], G.nodes[v]['x']))
+
+# 7. Trực quan hóa kết quả trên bản đồ Folium
+m = folium.Map(location=[10.770, 106.679], zoom_start=15)
+
+# Vẽ tuyến đường hoàn chỉnh
+folium.PolyLine(route_geometry, color='blue', weight=6, opacity=0.8).add_to(m)
+
+# Đánh dấu điểm đi và điểm đến
+folium.Marker(start_coords, popup="Điểm đi", icon=folium.Icon(color='green')).add_to(m)
+folium.Marker(end_coords, popup="Điểm đến", icon=folium.Icon(color='red')).add_to(m)
+
+# 8. In bảng so sánh hiệu năng để phục vụ báo cáo
+print(f"{'Thuật toán':<15} | {'Thời gian chạy (s)':<20}")
+print("-" * 40)
+print(f"{'Dijkstra':<15} | {time_dijkstra:.10f}")
+print(f"{'A*':<15} | {time_astar:.10f}")
+
+m
