@@ -1,0 +1,58 @@
+import folium
+from folium import plugins
+import pandas as pd
+
+# 1. Khởi tạo bản đồ trung tâm TP.HCM
+m = folium.Map(location=[10.7769, 106.6951], zoom_start=12, control_scale=True)
+
+# 2. Lớp dữ liệu VÙNG: Mật độ khách hàng
+# Giả lập dữ liệu mật độ đơn hàng tại các khu vực trọng điểm
+customer_data = [
+    [10.77, 106.70, 0.8], [10.78, 106.69, 0.9], [10.76, 106.68, 0.7],
+    [10.82, 106.63, 0.6], [10.81, 106.64, 0.5], [10.74, 106.67, 0.8]
+]
+heatmap_layer = plugins.HeatMap(customer_data, name='Mật độ đơn hàng (Heatmap)')
+heatmap_layer.add_to(m)
+
+# 3. Lớp dữ liệu ĐIỂM: Hệ thống kho hàng
+depots = folium.FeatureGroup(name='Hệ thống Kho hàng')
+kho_positions = {
+    'Kho Trung Tâm': [10.7760, 106.7000],
+    'Kho Vệ Tinh 1': [10.8231, 106.6297],
+    'Kho Vệ Tinh 2': [10.7450, 106.6550]
+}
+
+for name, pos in kho_positions.items():
+    folium.Marker(
+        location=pos,
+        popup=f"<b>{name}</b><br>Trạng thái: Đang hoạt động",
+        icon=folium.Icon(color='blue', icon='warehouse', prefix='fa')
+    ).add_to(depots)
+depots.add_to(m)
+
+# 4. Lớp dữ liệu TUYẾN ĐƯỜNG: Luồng vận chuyển
+routes = folium.FeatureGroup(name='Tuyến vận chuyển chính')
+# Kết nối từ kho trung tâm đến các kho vệ tinh
+line_coords = [
+    [kho_positions['Kho Trung Tâm'], kho_positions['Kho Vệ Tinh 1']],
+    [kho_positions['Kho Trung Tâm'], kho_positions['Kho Vệ Tinh 2']]
+]
+
+for line in line_coords:
+    folium.PolyLine(
+        line, color="red", weight=3, opacity=0.6, 
+        dash_array='10', tooltip="Tuyến tiếp vận nội bộ"
+    ).add_to(routes)
+routes.add_to(m)
+
+# 5. Thêm các tính năng tương tác cho Dashboard điều hành
+# Cho phép bật/tắt các lớp dữ liệu để phân tích
+folium.LayerControl().add_to(m)
+
+# Thêm nút hiển thị toàn màn hình để theo dõi Dashboard
+plugins.Fullscreen(position='topright', title='Toàn màn hình', title_cancel='Thoát').add_to(m)
+
+# Thêm công cụ đo khoảng cách thực tế giữa các điểm
+plugins.MeasureControl(position='topleft', primary_length_unit='kilometers').add_to(m)
+
+m
