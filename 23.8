@@ -1,0 +1,62 @@
+# Bước 1: Cài đặt và import thư viện
+import folium
+import pandas as pd
+import numpy as np
+
+# Bước 2: Giả lập dữ liệu tọa độ
+lat_center, lon_center = 10.7769, 10.6709
+
+# Giả lập 1 khách hàng
+customer = {'id': 'Khách hàng A', 'lat': 10.7765, 'lon': 106.7010}
+
+# Giả lập 5 xe đang trống xung quanh
+drivers = pd.DataFrame({
+    'driver_id': ['Xe 01', 'Xe 02', 'Xe 03', 'Xe 04', 'Xe 05'],
+    'lat': [10.7810, 10.7720, 10.7790, 10.7700, 10.7850],
+    'lon': [106.6980, 106.7050, 106.7100, 106.6950, 106.7020]
+})
+
+# Bước 3: Áp dụng Heuristic (Tính khoảng cách để gán xe)
+def calculate_distance(lat1, lon1, lat2, lon2):
+    # Công thức tính khoảng cách đơn giản giữa 2 điểm tọa độ
+    return np.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2)
+
+# Tính khoảng cách từ khách hàng đến từng xe
+drivers['distance'] = drivers.apply(
+    lambda row: calculate_distance(customer['lat'], customer['lon'], row['lat'], row['lon']), 
+    axis=1
+)
+
+# Tìm xe có khoảng cách nhỏ nhất (Gần nhất)
+best_driver = drivers.loc[drivers['distance'].idxmin()]
+
+print(f"Hệ thống đã tìm thấy {best_driver['driver_id']} gần bạn nhất!")
+
+# Bước 4: Trực quan hóa trên bản đồ Folium
+m = folium.Map(location=[customer['lat'], customer['lon']], zoom_start=15)
+
+# Đánh dấu vị trí khách hàng (Màu đỏ)
+folium.Marker(
+    [customer['lat'], customer['lon']], 
+    popup="Vị trí của bạn",
+    icon=folium.Icon(color='red', icon='user', prefix='fa')
+).add_to(m)
+
+# Đánh dấu các xe (Màu xanh)
+for _, row in drivers.iterrows():
+    color = 'green' if row['driver_id'] == best_driver['driver_id'] else 'blue'
+    folium.Marker(
+        [row['lat'], row['lon']], 
+        popup=f"{row['driver_id']} (Cách: {row['distance']:.4f})",
+        icon=folium.Icon(color=color, icon='car', prefix='fa')
+    ).add_to(m)
+
+# Vẽ đường nối giữa khách hàng và xe được chọn
+folium.PolyLine(
+    locations=[[customer['lat'], customer['lon']], [best_driver['lat'], best_driver['lon']]],
+    color="orange",
+    weight=5,
+    tooltip="Đường đi đón khách"
+).add_to(m)
+
+m
