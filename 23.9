@@ -1,0 +1,60 @@
+# Bước 1: Cài đặt và import thư viện
+import folium
+import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+
+# Bước 2: Giả lập dữ liệu vị trí 50 khách hàng tại TP.HCM
+np.random.seed(42)
+lat_center, lon_center = 10.7769, 106.6951
+
+data = {
+    'lat': np.random.uniform(10.74, 10.82, 50),
+    'lon': np.random.uniform(106.63, 106.75, 50)
+}
+df_customers = pd.DataFrame(data)
+
+# Bước 3: Áp dụng Machine Learning - Thuật toán K-Means
+# Giả sử chúng ta muốn xây dựng 3 kho hàng (Cluster = 3)
+n_clusters = 3
+kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+df_customers['cluster'] = kmeans.fit_predict(df_customers[['lat', 'lon']])
+
+# Lấy tọa độ của các trọng tâm (đây là vị trí đặt kho hàng tối ưu)
+warehouses = kmeans.cluster_centers_
+
+# Bước 4: Trực quan hóa trên bản đồ Folium
+m = folium.Map(location=[lat_center, lon_center], zoom_start=12)
+
+# Màu sắc cho từng cụm
+colors = ['red', 'blue', 'green']
+
+# Vẽ các khách hàng
+for _, row in df_customers.iterrows():
+    folium.CircleMarker(
+        location=[row['lat'], row['lon']],
+        radius=5,
+        color=colors[int(row['cluster'])],
+        fill=True,
+        fill_opacity=0.6,
+        popup=f"Khách hàng cụm {int(row['cluster'])}"
+    ).add_to(m)
+
+# Vẽ các kho hàng (Trọng tâm cụm)
+for i, warehouse in enumerate(warehouses):
+    folium.Marker(
+        location=[warehouse[0], warehouse[1]],
+        popup=f"KHO HÀNG TỐI ƯU {i+1}",
+        icon=folium.Icon(color='black', icon='warehouse', prefix='fa')
+    ).add_to(m)
+    
+    # Vẽ vòng tròn bán kính phục vụ giả định 3km cho mỗi kho
+    folium.Circle(
+        location=[warehouse[0], warehouse[1]],
+        radius=3000,
+        color='black',
+        fill=True,
+        fill_opacity=0.1
+    ).add_to(m)
+
+m
