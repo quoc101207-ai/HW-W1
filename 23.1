@@ -1,0 +1,43 @@
+import folium
+from folium.plugins import MeasureControl
+
+# 1. Khởi tạo bản đồ tại UEH CsB
+ueh_coords = [10.761155304754242, 106.66833958047597]
+m = folium.Map(location=ueh_coords, zoom_start=15, control_scale=True)
+
+# 2. Tạo các nhóm lớp (Feature Groups) để có thể bật/tắt
+fg_ueh = folium.FeatureGroup(name="UEH").add_to(m)
+fg_public = folium.FeatureGroup(name="Public locations").add_to(m)
+
+# 3. Thêm Marker cho UEH
+folium.Marker(
+    location=ueh_coords,
+    popup="<b>UEH - Cơ sở B</b><br>Đại học Kinh tế TP.HCM",
+    tooltip="Unbounded creativity. Empowered futures. Holistic values.",
+    icon=folium.Icon(color="red", icon="university", prefix="fa")
+).add_to(fg_ueh)
+
+# 4. Danh sách các địa điểm công cộng
+locations = [
+    {"name": "Bệnh viện Chợ Rẫy", "coords": [10.758027281342633, 106.6594809218186], "type": "Bệnh viện"},
+    {"name": "Hùng Vương Plaza", "coords": [10.756623825345516, 106.66300538000436], "type": "Trung tâm Thương mại"},
+    {"name": "Bệnh viện Nhi đồng 1", "coords": [10.769347419436327, 106.67105035519053], "type": "Bệnh viện"},
+    {"name": "Bệnh viện Đại học Y Dược", "coords": [10.755815191709852, 106.66453146819912], "type": "Bệnh viện"},
+    {"name": "Chợ An Đông", "coords": [10.758419897916475, 106.67236664347003], "type": "Chợ"}
+]
+
+# 5. Thêm Marker cho các địa điểm công cộng
+for loc in locations:
+    folium.Marker(
+        location=loc["coords"],
+        popup=f"<b>{loc['name']}</b><br>Loại: {loc['type']}",
+        tooltip=loc["name"],
+        icon=folium.Icon(color="blue", icon="info-sign")
+    ).add_to(fg_public)
+
+# 6. Thêm bộ điều khiển lớp (Bật/Tắt các lớp dữ liệu)
+folium.LayerControl().add_to(m)
+
+
+# 7. HIỂN THỊ BẢN ĐỒ TRÊN COLAB
+m
