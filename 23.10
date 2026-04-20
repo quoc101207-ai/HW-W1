@@ -1,0 +1,66 @@
+import folium
+import networkx as nx
+import math
+import osmnx as ox
+
+# Bước 1: Tải dữ liệu thô 
+location_point = (10.7712, 106.6700)
+G = ox.graph_from_point(location_point, dist=1000, network_type='drive')
+
+# Bước 2: Hàm tính khoảng cách giữa 2 tọa độ
+def get_distance(lat1, lon1, lat2, lon2):
+    # Công thức Pythagoras đơn giản cho phạm vi nhỏ
+    return math.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2)
+
+# Bước 3: Xác định điểm đi, điểm đến và vùng tắc nghẽn
+start_latlng = (10.7700, 106.6670)
+end_latlng = (10.7750, 106.6730)
+blocked_lat, blocked_lon = 10.7725, 106.6695
+avoid_threshold = 0.0015 # Tương đương khoảng 150m trong đơn vị tọa độ
+
+# Bước 4: Tự tìm nút (node) gần nhất bằng vòng lặp
+def find_nearest_node(graph, target_lat, target_lon):
+    best_node = None
+    min_dist = float('inf')
+    for node, data in graph.nodes(data=True):
+        dist = get_distance(target_lat, target_lon, data['y'], data['x'])
+        if dist < min_dist:
+            min_dist = dist
+            best_node = node
+    return best_node
+
+start_node = find_nearest_node(G, start_latlng[0], start_latlng[1])
+end_node = find_nearest_node(G, end_latlng[0], end_latlng[1])
+
+# Bước 5: Cập nhật trọng số để né vùng tắc nghẽn
+for u, v, k, data in G.edges(data=True, keys=True):
+    # Lấy tọa độ trung điểm của con đường để kiểm tra
+    mid_lat = (G.nodes[u]['y'] + G.nodes[v]['y']) / 2
+    mid_lon = (G.nodes[u]['x'] + G.nodes[v]['x']) / 2
+    
+    # Nếu con đường nằm trong phạm vi tắc nghẽn, tăng trọng số lên cực cao
+    if get_distance(mid_lat, mid_lon, blocked_lat, blocked_lon) < avoid_threshold:
+        data['weight'] = data.get('length', 1) * 1000
+    else:
+        data['weight'] = data.get('length', 1)
+
+# Bước 6: Chạy thuật toán Dijkstra từ NetworkX
+route_nodes = nx.shortest_path(G, source=start_node, target=end_node, weight='weight')
+
+# Bước 7: Trực quan hóa
+m = folium.Map(location=location_point, zoom_start=16)
+
+# Vẽ vùng rủi ro
+folium.Circle(
+    location=[blocked_lat, blocked_lon],
+    radius=150, color='red', fill=True, fill_opacity=0.3, popup="VÙNG TẮC NGHẼN"
+).add_to(m)
+
+# Tự chuyển đổi danh sách nút thành tọa độ để vẽ đường
+route_coords = [[G.nodes[n]['y'], G.nodes[n]['x']] for n in route_nodes]
+folium.PolyLine(route_coords, color="blue", weight=6).add_to(m)
+
+folium.Marker(start_latlng, icon=folium.Icon(color='green', icon='play')).add_to(m)
+folium.Marker(end_latlng, icon=folium.Icon(color='orange', icon='stop')).add_to(m)
+
+m
