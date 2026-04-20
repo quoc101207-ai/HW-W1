@@ -1,0 +1,54 @@
+import folium
+
+# 1. Thiết lập tọa độ trung tâm (UEH Cơ sở B)
+ueh_b_lat, ueh_b_lon = 10.761, 106.668
+
+# 2. Khởi tạo bản đồ tập trung tại Cơ sở B
+m = folium.Map(location=[ueh_b_lat, ueh_b_lon], zoom_start=14)
+
+# 3. Vẽ các vùng bán kính phục vụ (Service Area Buffers)
+# Vùng 1: 3km, Vùng 2: 5km, Vùng 3: 10km
+service_zones = [
+    {'radius': 3000, 'color': 'green', 'label': 'Vùng 1: Nội đô (3km)', 'fill': 0.2},
+    {'radius': 5000, 'color': 'orange', 'label': 'Vùng 2: Mở rộng (5km)', 'fill': 0.15},
+    {'radius': 10000, 'color': 'red', 'label': 'Vùng 3: Ngoại vi (10km)', 'fill': 0.1}
+]
+
+for zone in service_zones:
+    folium.Circle(
+        location=[ueh_b_lat, ueh_b_lon],
+        radius=zone['radius'],
+        color=zone['color'],
+        fill=True,
+        fill_color=zone['color'],
+        fill_opacity=zone['fill'],
+        popup=f"<b>{zone['label']}</b><br>Bán kính: {zone['radius']/1000}km",
+        tooltip=zone['label']
+    ).add_to(m)
+
+# 4. Đánh dấu vị trí UEH Cơ sở B (Đóng vai trò Logistics Hub)
+folium.Marker(
+    [ueh_b_lat, ueh_b_lon],
+    popup='<b>LOGISTICS HUB: UEH CƠ SỞ B (CHÍNH XÁC)</b>',
+    icon=folium.Icon(color='red', icon='graduation-cap', prefix='fa')
+).add_to(m)
+
+# 5. Giả lập các điểm khách hàng thực tế để đánh giá khả năng tiếp cận
+# Các điểm này được chọn nằm ở ranh giới giữa các vùng để kiểm tra độ phủ
+check_points = [
+    {'name': 'Chợ Lớn (Vùng 1)', 'pos': [10.751, 106.654]}, 
+    {'name': 'Ngã sáu Cộng Hòa (Vùng 2)', 'pos': [10.770, 106.683]},
+    {'name': 'Sân bay Tân Sơn Nhất (Vùng 3)', 'pos': [10.816, 106.663]}
+]
+
+for p in check_points:
+    folium.CircleMarker(
+        location=p['pos'],
+        radius=6,
+        color='black',
+        fill=True,
+        fill_opacity=0.9,
+        popup=f"Điểm kiểm tra: {p['name']}"
+    ).add_to(m)
+
+m
