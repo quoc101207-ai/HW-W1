@@ -1,0 +1,56 @@
+import folium
+import pandas as pd
+import numpy as np
+
+# 1. Thiết lập tọa độ 3 Kho hàng tại TP.HCM
+depots = {
+    'Kho_A': [10.7760, 106.7000], # Quận 1
+    'Kho_B': [10.7580, 106.6650], # Quận 5
+    'Kho_C': [10.8231, 106.6297]  # Quận Gò Vấp
+}
+
+# 2. Thiết lập tọa độ khách hàng (9 điểm) chia theo khu vực
+customers = [
+    [10.785, 106.710], [10.790, 106.690], [10.770, 106.715], # Gần Kho A
+    [10.750, 106.670], [10.745, 106.655], [10.765, 106.645], # Gần Kho B
+    [10.830, 106.620], [10.815, 106.635], [10.840, 106.640]  # Gần Kho C
+]
+
+# Hàm tính khoảng cách Euclid cơ bản giữa hai điểm
+def get_dist(p1, p2):
+    return np.sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+
+# 3. PHƯƠNG ÁN KHÔNG TỐI ƯU: 1 xe đi hết 9 điểm từ Kho A rồi quay về
+route_non_opt = [depots['Kho_A']] + customers + [depots['Kho_A']]
+dist_non_opt = sum(get_dist(route_non_opt[i], route_non_opt[i+1]) for i in range(len(route_non_opt)-1))
+
+# 4. PHƯƠNG ÁN TỐI ƯU: Chia 3 xe tại 3 kho, mỗi xe đi 3 điểm gần nhất
+routes_opt = {
+    'Xe_1': [depots['Kho_A']] + customers[0:3] + [depots['Kho_A']],
+    'Xe_2': [depots['Kho_B']] + customers[3:6] + [depots['Kho_B']],
+    'Xe_3': [depots['Kho_C']] + customers[6:9] + [depots['Kho_C']]
+}
+
+# Tính tổng quãng đường của phương án tối ưu
+dist_opt = sum(
+    sum(get_dist(r[i], r[i+1]) for i in range(len(r)-1)) 
+    for r in routes_opt.values()
+)
+
+# 5. Trực quan hóa kết quả bằng thư viện Folium
+m = folium.Map(location=[10.78, 106.67], zoom_start=12)
+
+# Vẽ các Kho hàng trên bản đồ (Marker màu đen)
+for name, pos in depots.items():
+    folium.Marker(pos, popup=name, icon=folium.Icon(color='black', icon='info-sign')).add_to(m)
+
+# Vẽ vị trí các khách hàng (CircleMarker màu xanh dương)
+for i, pos in enumerate(customers):
+    folium.CircleMarker(pos, radius=5, color='blue', fill=True).add_to(m)
+
+# Vẽ tuyến đường di chuyển của 3 xe (Mỗi xe sử dụng một màu riêng biệt)
+colors = ['green', 'purple', 'orange']
+for (xe, route), color in zip(routes_opt.items(), colors):
+    folium.PolyLine(route, color=color, weight=4, opacity=0.8, tooltip=xe).add_to(m)
+
+m
