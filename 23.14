@@ -1,0 +1,43 @@
+import folium
+
+# 1. Tọa độ xe di chuyển
+# Mỗi điểm đại diện cho trạng thái xe sau mỗi 2 phút di chuyển thực tế
+tracking_points = [
+    {'time': '08:00', 'lat': 10.7600, 'lon': 106.6660, 'status': 'Xuất phát từ Kho'},
+    {'time': '08:02', 'lat': 10.7620, 'lon': 106.6665, 'status': 'Đang di chuyển - Ổn định'},
+    {'time': '08:04', 'lat': 10.7640, 'lon': 106.6670, 'status': 'Gặp cảnh báo tắc nghẽn nhẹ'},
+    {'time': '08:06', 'lat': 10.7660, 'lon': 106.6675, 'status': 'Đang giao hàng tại điểm 1'},
+    {'time': '08:08', 'lat': 10.7680, 'lon': 106.6680, 'status': 'Hoàn thành - Di chuyển tiếp'}
+]
+
+# 2. Khởi tạo bản đồ tập trung tại khu vực xe đang hoạt động
+m = folium.Map(location=[10.7640, 106.6670], zoom_start=15)
+
+# 3. Vẽ đường đi của xe (PolyLine) dựa trên danh sách tọa độ
+path_coords = [[p['lat'], p['lon']] for p in tracking_points]
+folium.PolyLine(path_coords, color='blue', weight=4, opacity=0.6).add_to(m)
+
+# 4. Thêm các điểm Marker đại diện cho từng "bước thời gian" cụ thể
+for i, p in enumerate(tracking_points):
+    # Tạo nội dung Popup HTML hiển thị thông tin quản trị hành trình
+    html = f"""
+    <div style='width: 150px; font-family: Arial;'>
+        <b>Bước thời gian {i+1}</b><br>
+        <b>Giờ:</b> {p['time']}<br>
+        <b>Trạng thái:</b> {p['status']}
+    </div>
+    """
+    
+    folium.Marker(
+        location=[p['lat'], p['lon']],
+        popup=folium.Popup(html, max_width=200),
+        # Sử dụng DivIcon để hiển thị số thứ tự hành trình ngay trên bản đồ
+        icon=folium.Icon(color='blue') if i == 0 else folium.DivIcon(html=f"""
+            <div style="font-family: sans-serif; color: white; background-color: blue; 
+            border-radius: 50%; width: 25px; height: 25px; display: flex; 
+            align-items: center; justify-content: center; font-weight: bold; 
+            border: 2px solid white;">{i+1}</div>
+        """)
+    ).add_to(m)
+
+m
