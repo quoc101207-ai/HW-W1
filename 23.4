@@ -1,0 +1,42 @@
+import geopandas as gpd
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 1. Đọc dữ liệu ranh giới hành chính từ nguồn URL mở (Natural Earth)
+url = "https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson"
+world = gpd.read_file(url)
+
+# Lọc ra các quốc gia Đông Nam Á để làm dữ liệu mẫu
+sea_countries = ['Vietnam', 'Thailand', 'Indonesia', 'Malaysia', 'Philippines', 'Singapore', 'Cambodia', 'Laos', 'Myanmar']
+sea_map = world[world['name'].isin(sea_countries)].copy()
+
+# 2. Giả lập tập dữ liệu số
+data = {
+    'name': ['Vietnam', 'Thailand', 'Indonesia', 'Malaysia', 'Philippines', 'Singapore', 'Cambodia', 'Laos', 'Myanmar'],
+    'orders': [8500, 6200, 12000, 4500, 7800, 3000, 1500, 800, 2500]
+}
+df_orders = pd.DataFrame(data)
+
+# 3. Kết hợp dữ liệu không gian và dữ liệu số
+sea_merged = sea_map.merge(df_orders, on='name')
+
+# 4. Vẽ bản đồ Choropleth
+fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+
+sea_merged.plot(
+    column='orders', 
+    cmap='YlOrRd', # Hệ màu Vàng - Cam - Đỏ
+    linewidth=0.8, 
+    ax=ax, 
+    edgecolor='0.5', 
+    legend=True,
+    legend_kwds={'label': "Số lượng đơn hàng theo quốc gia", 'orientation': "horizontal"}
+)
+
+# Thêm tên quốc gia lên bản đồ
+for x, y, label in zip(sea_merged.geometry.centroid.x, sea_merged.geometry.centroid.y, sea_merged['name']):
+    ax.annotate(label, xy=(x, y), xytext=(3, 3), textcoords="offset points", fontsize=8)
+
+plt.title('BÀI 23.4: PHÂN TÍCH KHÔNG GIAN ĐƠN HÀNG ĐÔNG NAM Á', fontsize=14)
+ax.set_axis_off()
+plt.show()
