@@ -1,0 +1,49 @@
+import folium
+from folium import plugins
+from sklearn.cluster import MeanShift
+import numpy as np
+
+# 1. Giả lập dữ liệu: 100 yêu cầu đặt xe ngẫu nhiên
+# Tập trung quanh khu vực Quận 1, Quận 3 và Quận 10
+np.random.seed(10)
+center_hcm = [10.776, 106.695]
+demand_points = np.random.randn(100, 2) * 0.015 + center_hcm
+
+# 2. Áp dụng AI: Mean Shift để phát hiện các vùng nóng
+# bandwidth giúp xác định bán kính ảnh hưởng của một vùng nóng
+ms = MeanShift(bandwidth=0.01, bin_seeding=True)
+ms.fit(demand_points)
+
+# Tọa độ các trung tâm vùng nóng
+hotspots = ms.cluster_centers_
+labels = ms.labels_
+
+# 3. Trực quan hóa bản đồ Dashboard Điều phối
+m = folium.Map(location=center_hcm, zoom_start=14)
+
+# Lớp 1: Heatmap thể hiện mật độ nhu cầu tổng quan
+heat_data = [[p[0], p[1]] for p in demand_points]
+plugins.HeatMap(heat_data, name="Mật độ nhu cầu", radius=15).add_to(m)
+
+# Lớp 2: Marker cho các vùng nóng cần điều phối xe
+for i, spot in enumerate(hotspots):
+    # Tính số lượng khách trong vùng nóng này
+    count = np.sum(labels == i)
+    
+    folium.Marker(
+        location=[spot[0], spot[1]],
+        popup=f"VÙNG NÓNG {i+1}: {count} yêu cầu chờ",
+        icon=folium.Icon(color='red', icon='bolt', prefix='fa')
+    ).add_to(m)
+    
+    # Vẽ vòng tròn cảnh báo điều phối
+    folium.Circle(
+        location=[spot[0], spot[1]],
+        radius=500,
+        color='red',
+        fill=True,
+        fill_opacity=0.2
+    ).add_to(m)
+
+
+m
