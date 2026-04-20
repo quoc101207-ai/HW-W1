@@ -1,0 +1,77 @@
+import folium
+from geopy.geocoders import Nominatim
+from geopy.distance import geodesic
+import time
+
+# 1. Khởi tạo Geocoder
+geolocator = Nominatim(user_agent="23.2")
+
+# Điểm trung tâm: Hồ Con Rùa
+central_address = "Hồ Con Rùa"
+location_central = geolocator.geocode(central_address)
+central_coords = (location_central.latitude, location_central.longitude)
+
+# 2. Giả lập danh sách 10 địa chỉ
+addresses = [
+    "Independence Palace, Ho Chi Minh City",
+    "Ben Thanh Market, Ho Chi Minh City",
+    "Sheraton Saigon Hotel, Ho Chi Minh City",
+    "Saigon Central Post Office, Ho Chi Minh City",
+    "Landmark 81, Ho Chi Minh City",
+    "Tan Son Nhat International Airport, Ho Chi Minh City",
+    "Bitexco Financial Tower, Ho Chi Minh City",
+    "Saigon Opera House, Ho Chi Minh City",
+    "Diamond Plaza, Ho Chi Minh City",
+    "Vinhomes Central Park, Ho Chi Minh City"
+]
+
+# 3. Xử lý dữ liệu: Geocoding và tính khoảng cách
+data_points = []
+for addr in addresses:
+        # Tìm tọa độ
+        loc = geolocator.geocode(addr)
+        if loc:
+            point_coords = (loc.latitude, loc.longitude)
+            # Tính khoảng cách (đơn vị: km)
+            dist = geodesic(central_coords, point_coords).km
+            data_points.append({
+                "name": addr,
+                "coords": point_coords,
+                "dist": round(dist, 2)
+            })
+            print(f"Thành công: {addr} -> Khoảng cách: {dist:.2f} km")
+        else:
+            print(f"Lỗi: Không tìm thấy tọa độ cho {addr}")
+        # Nghỉ một chút để tuân thủ chính sách API của Nominatim
+        time.sleep(1) 
+
+# 4. Trực quan hóa bằng Folium
+# Khởi tạo bản đồ tại điểm trung tâm
+m = folium.Map(location=central_coords, zoom_start=13)
+
+# Đánh dấu điểm trung tâm (Hồ Con Rùa)
+folium.Marker(
+    central_coords, 
+    popup="Hồ Con Rùa", 
+    icon=folium.Icon(color='red', icon='star', prefix='fa')
+).add_to(m)
+
+# Đánh dấu các điểm vệ tinh và vẽ đường nối
+for p in data_points:
+    # Marker cho từng điểm
+    folium.Marker(
+        p["coords"],
+        popup=f"{p['name']}<br>Khoảng cách: {p['dist']} km",
+        icon=folium.Icon(color='blue', icon='info-sign')
+    ).add_to(m)
+    
+    # Vẽ đường thẳng (PolyLine) thể hiện mối quan hệ không gian
+    folium.PolyLine(
+        locations=[central_coords, p["coords"]],
+        color='green',
+        weight=3,
+        dash_array='5, 5',
+        opacity=0.6
+    ).add_to(m)
+
+m
