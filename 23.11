@@ -1,0 +1,61 @@
+import pandas as pd
+import numpy as np
+import folium
+from sklearn.linear_model import LinearRegression
+import datetime
+
+# 1. Giả lập dữ liệu lịch sử
+# Giả sử chúng ta có dữ liệu nhu cầu của 3 quận trong 10 tiếng qua
+data = {
+    'district': ['Quận 1', 'Quận 3', 'Quận 10'] * 10,
+    'hour': np.repeat(np.arange(1, 11), 3),
+    'demand': [
+        # Nhu cầu Quận 1 (Tăng dần về trưa)
+        20, 25, 30, 45, 60, 80, 95, 110, 120, 130,
+        # Nhu cầu Quận 3 (Ổn định)
+        40, 42, 45, 48, 50, 55, 58, 60, 62, 65,
+        # Nhu cầu Quận 10 (Biến động mạnh)
+        10, 15, 40, 80, 120, 150, 130, 100, 80, 60
+    ]
+}
+df = pd.DataFrame(data)
+
+# 2. Xây dựng mô hình AI dự báo cho tiếng thứ 11
+predictions = {}
+districts_coords = {
+    'Quận 1': [10.7760, 106.7000],
+    'Quận 3': [10.7843, 106.6844],
+    'Quận 10': [10.7746, 106.6679]
+}
+
+for d in districts_coords.keys():
+    # Lấy dữ liệu riêng cho từng quận
+    temp_df = df[df['district'] == d]
+    X = temp_df[['hour']].values
+    y = temp_df['demand'].values
+    
+    # Huấn luyện mô hình Linear Regression
+    model = LinearRegression()
+    model.fit(X, y)
+    
+    # Dự báo nhu cầu cho giờ thứ 11
+    pred = model.predict([[11]])
+    predictions[d] = max(0, int(pred[0])) # Không để nhu cầu âm
+
+# 3. Trực quan hóa kết quả lên bản đồ
+m = folium.Map(location=[10.7769, 106.6951], zoom_start=13)
+
+for d, demand in predictions.items():
+    # Dùng màu sắc để thể hiện mức độ nhu cầu (Nóng/Lạnh)
+    color = 'red' if demand > 100 else 'orange' if demand > 50 else 'green'
+    
+    folium.CircleMarker(
+        location=districts_coords[d],
+        radius=demand / 5, # Bán kính vòng tròn tỉ lệ với nhu cầu dự báo
+        color=color,
+        fill=True,
+        fill_opacity=0.6,
+        popup=f"{d}: Dự báo nhu cầu giờ tới là {demand} đơn"
+    ).add_to(m)
+
+m
