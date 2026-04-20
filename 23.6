@@ -1,0 +1,46 @@
+import osmnx as ox
+import folium
+
+# 1. Tải dữ liệu mạng lưới đường bộ với tọa độ tọa độ UEH Cơ sở B
+ueh_lat, ueh_lon = 10.761, 106.668
+G = ox.graph_from_point((ueh_lat, ueh_lon), dist=1000, network_type='drive')
+
+# 2. Tính toán các chỉ số thống kê mạng lưới cơ bản
+stats = ox.basic_stats(G)
+n_nodes = stats['n']                # Số lượng nút giao
+avg_len = stats['edge_length_avg']  # Chiều dài trung bình mỗi đoạn đường
+circuity = stats['circuity_avg']    # Độ vòng vèo trung bình của mạng lưới
+
+# 3. Khởi tạo bản đồ tương tác Folium
+m = folium.Map(location=[ueh_lat, ueh_lon], zoom_start=16)
+
+# 4. Chuyển đổi đồ thị sang định dạng GeoDataFrame để hiển thị lên bản đồ
+edges = ox.graph_to_gdfs(G, nodes=False)
+folium.GeoJson(
+    edges, 
+    name="Mạng lưới đường xá", 
+    style_function=lambda x: {'color': '#3388ff', 'weight': 3, 'opacity': 0.7}
+).add_to(m)
+
+# 5. Tạo nội dung HTML cho Marker hiển thị thông số phân tích tại UEH Cơ sở B
+html_content = f"""
+<div style='font-family: Arial; width: 200px;'>
+    <h4 style='margin:0; color: #d9534f;'>PHÂN TÍCH ĐỒ THỊ</h4>
+    <hr style='margin: 5px 0;'>
+    <p><b>Vị trí:</b> UEH Cơ sở B</p>
+    <p><b>Tọa độ:</b> {ueh_lat}, {ueh_lon}</p>
+    <p><b>Số nút giao:</b> {n_nodes}</p>
+    <p><b>Chiều dài TB:</b> {avg_len:.2f} m</p>
+    <p><b>Độ vòng vèo:</b> {circuity:.4f}</p>
+</div>
+"""
+
+# Đánh dấu vị trí trung tâm kèm bảng thông tin (Popup)
+folium.Marker(
+    [ueh_lat, ueh_lon],
+    popup=folium.Popup(html_content, max_width=250),
+    tooltip="Xem chỉ số mạng lưới tại đây",
+    icon=folium.Icon(color='red', icon='info-sign')
+).add_to(m)
+
+m
